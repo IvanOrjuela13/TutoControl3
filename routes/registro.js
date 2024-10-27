@@ -12,7 +12,7 @@ const ubicacionesPermitidas = [
 // Función para verificar si la ubicación está permitida
 const estaUbicacionPermitida = (ubicacion) => {
     const { latitude, longitude } = ubicacion;
-    
+
     // Comprueba si está dentro de un radio de 100 metros (puedes ajustar este valor)
     return ubicacionesPermitidas.some(ubicacionPermitida =>
         geolib.isPointWithinRadius(
@@ -27,8 +27,13 @@ const estaUbicacionPermitida = (ubicacion) => {
 router.post('/entrada', async (req, res) => {
     const { userId, deviceID, ubicacion } = req.body;
 
+    // Verifica si la ubicación fue proporcionada
+    if (!ubicacion || !ubicacion.latitude || !ubicacion.longitude) {
+        return res.status(400).json({ msg: 'Ubicación no válida. Por favor, habilita la geolocalización.' });
+    }
+
     if (!estaUbicacionPermitida(ubicacion)) {
-        return res.status(400).json({ msg: 'Debes dirigirte a la ubicación permitida.' });
+        return res.status(400).json({ msg: 'Debes dirigirte a la ubicación permitida: 4.452138273023352, -75.1308883161288' });
     }
 
     try {
@@ -53,8 +58,13 @@ router.post('/entrada', async (req, res) => {
 router.post('/salida', async (req, res) => {
     const { userId, deviceID, ubicacion } = req.body;
 
+    // Verifica si la ubicación fue proporcionada
+    if (!ubicacion || !ubicacion.latitude || !ubicacion.longitude) {
+        return res.status(400).json({ msg: 'Ubicación no válida. Por favor, habilita la geolocalización.' });
+    }
+
     if (!estaUbicacionPermitida(ubicacion)) {
-        return res.status(400).json({ msg: 'Debes dirigirte a la ubicación permitida.' });
+        return res.status(400).json({ msg: 'Debes dirigirte a la ubicación permitida: 4.452138273023352, -75.1308883161288' });
     }
 
     try {
