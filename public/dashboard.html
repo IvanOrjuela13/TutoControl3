@@ -69,6 +69,13 @@
     </div>
 
     <script>
+        // Coordenadas de la ubicación permitida
+        const allowedLocation = {
+            latitude: 4.450237,   // Latitud
+            longitude: -75.177576, // Longitud
+            radius: 0.01 // Radio en grados (aproximadamente 1.1 km)
+        };
+
         // Función para obtener la ubicación del usuario
         function getLocation() {
             return new Promise((resolve, reject) => {
@@ -117,11 +124,26 @@
             }
         }
 
+        // Función para verificar si la ubicación está dentro del área permitida
+        function isLocationAllowed(location) {
+            const distance = Math.sqrt(
+                Math.pow(location.lat - allowedLocation.latitude, 2) +
+                Math.pow(location.lng - allowedLocation.longitude, 2)
+            );
+            return distance <= allowedLocation.radius;
+        }
+
         // Manejador de evento para registro de entrada
         document.getElementById('entradaBtn').addEventListener('click', async () => {
             try {
                 const position = await getLocation();
                 const locationData = showPosition(position);
+
+                // Verificar si la ubicación es válida
+                if (!isLocationAllowed(locationData)) {
+                    document.getElementById('message').innerHTML = '<div class="alert alert-danger">Ubicación no permitida para el registro.</div>';
+                    return;
+                }
 
                 const userId = 'ID_DEL_USUARIO'; // Reemplaza con el ID del usuario correspondiente
                 const deviceID = localStorage.getItem('deviceID');
@@ -150,6 +172,12 @@
             try {
                 const position = await getLocation();
                 const locationData = showPosition(position);
+
+                // Verificar si la ubicación es válida
+                if (!isLocationAllowed(locationData)) {
+                    document.getElementById('message').innerHTML = '<div class="alert alert-danger">Ubicación no permitida para el registro.</div>';
+                    return;
+                }
 
                 const userId = 'ID_DEL_USUARIO'; // Reemplaza con el ID del usuario correspondiente
                 const deviceID = localStorage.getItem('deviceID');
