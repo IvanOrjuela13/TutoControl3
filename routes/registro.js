@@ -1,29 +1,37 @@
 const express = require('express');
 const Registro = require('../models/registro');
 const moment = require('moment-timezone');
-const geolib = require('geolib'); // Asegúrate de haber instalado geolib
 const router = express.Router();
 
-// Define las ubicaciones permitidas
-const ubicacionesPermitidas = [
-    { latitude: 4.452138273023352, longitude: -75.1308883161288 } // Ubicación permitida
-];
-
-// Función para verificar si la ubicación está permitida
-const estaUbicacionPermitida = (ubicacion) => {
-    const { latitude, longitude } = ubicacion;
-
-    // Comprueba si está dentro de un radio de 100 metros (puedes ajustar este valor)
-    return ubicacionesPermitidas.some(ubicacionPermitida =>
-        geolib.isPointWithinRadius(
-            { latitude, longitude },
-            ubicacionPermitida,
-            100 // Radio en metros
-        )
-    );
+// Nueva ubicación permitida
+const ubicacionPermitida = {
+    latitude: 4.450243,
+    longitude: -75.177566
 };
 
-// Ruta para registrar entrada
+// Función para calcular la distancia entre dos puntos geográficos en metros usando la fórmula de Haversine
+function calcularDistancia(ubicacion1, ubicacion2) {
+    const R = 6371e3; // Radio de la Tierra en metros
+    const lat1 = ubicacion1.latitude * Math.PI / 180;
+    const lat2 = ubicacion2.latitude * Math.PI / 180;
+    const deltaLat = (ubicacion2.latitude - ubicacion1.latitude) * Math.PI / 180;
+    const deltaLon = (ubicacion2.longitude - ubicacion1.longitude) * Math.PI / 180;
+
+    const a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+              Math.cos(lat1) * Math.cos(lat2) *
+              Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; // Distancia en metros
+}
+
+// Verifica si el usuario está dentro de un radio permitido
+function estaUbicacionPermitida(ubicacion) {
+    const distancia = calcularDistancia(ubicacion, ubicacionPermitida);
+    return distancia <= 100; // Radio de 100 metros
+}
+
+// Ruta para registrar la entrada
 router.post('/entrada', async (req, res) => {
     const { userId, deviceID, ubicacion } = req.body;
 
@@ -33,11 +41,11 @@ router.post('/entrada', async (req, res) => {
     }
 
     if (!estaUbicacionPermitida(ubicacion)) {
-        return res.status(400).json({ msg: 'Debes dirigirte a la ubicación permitida: 4.452138273023352, -75.1308883161288' });
+        return res.status(400).json({ msg: 'Debes dirigirte a la ubicación permitida: 4.450243, -75.177566' });
     }
 
     try {
-        let fechaLocal = moment.tz("America/Bogota").subtract(5, 'hours');
+        const fechaLocal = moment.tz("America/Bogota").subtract(5, 'hours');
 
         const nuevoRegistro = new Registro({
             userId,
@@ -54,7 +62,7 @@ router.post('/entrada', async (req, res) => {
     }
 });
 
-// Ruta para registrar salida
+// Ruta para registrar la salida
 router.post('/salida', async (req, res) => {
     const { userId, deviceID, ubicacion } = req.body;
 
@@ -64,11 +72,11 @@ router.post('/salida', async (req, res) => {
     }
 
     if (!estaUbicacionPermitida(ubicacion)) {
-        return res.status(400).json({ msg: 'Debes dirigirte a la ubicación permitida: 4.452138273023352, -75.1308883161288' });
+        return res.status(400).json({ msg: 'Debes dirigirte a la ubicación permitida: 4.450243, -75.177566' });
     }
 
     try {
-        let fechaLocal = moment.tz("America/Bogota").subtract(5, 'hours');
+        const fechaLocal = moment.tz("America/Bogota").subtract(5, 'hours');
 
         const nuevoRegistro = new Registro({
             userId,
