@@ -73,7 +73,7 @@
         const allowedLocation = {
             latitude: 4.450237,   // Latitud
             longitude: -75.177576, // Longitud
-            radius: 0.01 // Radio en grados (aproximadamente 1.1 km)
+            radius: 100 // Radio en metros (ajustar según necesidad)
         };
 
         // Función para obtener la ubicación del usuario
@@ -87,12 +87,21 @@
             });
         }
 
-        // Función para ajustar la fecha y hora
-        function ajustarFechaYHora(fechaOriginal) {
-            let fechaAjustada = new Date(fechaOriginal);
-            fechaAjustada.setDate(fechaAjustada.getDate() + 1); // Sumar un día
-            fechaAjustada.setHours(fechaAjustada.getHours() + 12); // Sumar 12 horas
-            return fechaAjustada.toISOString(); // Convertir a formato ISO 8601
+        // Función para calcular la distancia entre dos puntos usando la fórmula del Haversine
+        function haversineDistance(coords1, coords2) {
+            const toRad = (value) => value * Math.PI / 180;
+            const R = 6371e3; // Radio de la Tierra en metros
+            const lat1 = toRad(coords1.latitude);
+            const lat2 = toRad(coords2.latitude);
+            const deltaLat = toRad(coords2.latitude - coords1.latitude);
+            const deltaLon = toRad(coords2.longitude - coords1.longitude);
+
+            const a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+                      Math.cos(lat1) * Math.cos(lat2) *
+                      Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+            return R * c; // Distancia en metros
         }
 
         function showPosition(position) {
@@ -126,10 +135,7 @@
 
         // Función para verificar si la ubicación está dentro del área permitida
         function isLocationAllowed(location) {
-            const distance = Math.sqrt(
-                Math.pow(location.lat - allowedLocation.latitude, 2) +
-                Math.pow(location.lng - allowedLocation.longitude, 2)
-            );
+            const distance = haversineDistance(location, allowedLocation);
             return distance <= allowedLocation.radius;
         }
 
@@ -141,7 +147,12 @@
 
                 // Verificar si la ubicación es válida
                 if (!isLocationAllowed(locationData)) {
-                    document.getElementById('message').innerHTML = '<div class="alert alert-danger">Ubicación no permitida para el registro.</div>';
+                    document.getElementById('message').innerHTML = `
+                        <div class="alert alert-danger">
+                            Ubicación no permitida para el registro. 
+                            <strong>Por favor dirígete a:</strong> 
+                            <br>Latitud: ${allowedLocation.latitude}, Longitud: ${allowedLocation.longitude}.
+                        </div>`;
                     return;
                 }
 
@@ -150,7 +161,7 @@
 
                 // Generar y ajustar fecha y hora
                 const fechaOriginal = new Date(); // Obtiene la fecha actual
-                const fechaAjustada = ajustarFechaYHora(fechaOriginal); // Ajusta la fecha
+                const fechaAjustada = fechaOriginal.toISOString(); // Convertir a formato ISO 8601
 
                 const response = await fetch('/api/registro/entrada', {
                     method: 'POST',
@@ -175,7 +186,12 @@
 
                 // Verificar si la ubicación es válida
                 if (!isLocationAllowed(locationData)) {
-                    document.getElementById('message').innerHTML = '<div class="alert alert-danger">Ubicación no permitida para el registro.</div>';
+                    document.getElementById('message').innerHTML = `
+                        <div class="alert alert-danger">
+                            Ubicación no permitida para el registro. 
+                            <strong>Por favor dirígete a:</strong> 
+                            <br>Latitud: ${allowedLocation.latitude}, Longitud: ${allowedLocation.longitude}.
+                        </div>`;
                     return;
                 }
 
@@ -184,7 +200,7 @@
 
                 // Generar y ajustar fecha y hora
                 const fechaOriginal = new Date(); // Obtiene la fecha actual
-                const fechaAjustada = ajustarFechaYHora(fechaOriginal); // Ajusta la fecha
+                const fechaAjustada = fechaOriginal.toISOString(); // Convertir a formato ISO 8601
 
                 const response = await fetch('/api/registro/salida', {
                     method: 'POST',
@@ -201,18 +217,8 @@
             }
         });
 
-        // Manejador para cerrar sesión
-        document.getElementById('logoutBtn').addEventListener('click', () => {
-            const messageElement = document.getElementById('message');
-            messageElement.innerHTML = '<div class="alert alert-success">Sesión cerrada con éxito.</div>';
-            
-            setTimeout(() => {
-                window.location.href = '/login.html';
-            }, 1000);
-        });
-
-        // Llamar a la función para obtener la ubicación al cargar la página
-        getLocation().then(showPosition).catch(showError);
+        // Iniciar la geolocalización al cargar la página
+        window.onload = getLocation();
     </script>
 </body>
 </html>
