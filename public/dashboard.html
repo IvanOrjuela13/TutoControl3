@@ -7,47 +7,8 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
     <style>
-        body {
-            background-color: #f0f2f5;
-        }
-        .container {
-            max-width: 500px;
-            margin: auto;
-            background: white;
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
-            transition: box-shadow 0.3s ease;
-        }
-        .container:hover {
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-        }
-        h2 {
-            color: #343a40;
-            margin-bottom: 20px;
-            font-size: 24px;
-            text-align: center;
-        }
-        .btn {
-            border-radius: 20px;
-            padding: 10px 20px;
-            font-size: 14px;
-            margin: 5px;
-            transition: transform 0.2s;
-        }
-        .btn:hover {
-            transform: scale(1.05);
-        }
-        #locationDisplay {
-            margin-top: 15px;
-            padding: 10px;
-            border: 1px solid #ccc;
-            border-radius: 10px;
-            background-color: #e9ecef;
-        }
-        #message {
-            margin-top: 15px;
-        }
+        /* Estilos personalizados */
+        /* ... */
     </style>
 </head>
 <body>
@@ -69,10 +30,20 @@
     </div>
 
     <script>
-        // Coordenadas de referencia (coordenadas del primer registro)
-        const referenciaLat = 4.627; // Reemplazar con latitud real
-        const referenciaLng = -74.066; // Reemplazar con longitud real
+        // Variables de referencia de ubicación (se obtienen desde el servidor)
+        let referenciaLat = null;
+        let referenciaLng = null;
         const radioPermitido = 500; // Radio en metros
+
+        // Obtener ubicación de referencia del servidor
+        async function obtenerReferencia() {
+            const response = await fetch('/api/referencia');
+            const data = await response.json();
+            if (data.lat && data.lng) {
+                referenciaLat = data.lat;
+                referenciaLng = data.lng;
+            }
+        }
 
         // Función para obtener la ubicación actual del usuario
         function getLocation() {
@@ -131,6 +102,9 @@
 
         // Validar distancia y mostrar mensaje si está fuera del rango permitido
         function validarUbicacion(position) {
+            if (!referenciaLat || !referenciaLng) {
+                return true; // Si no hay referencia, permitir el primer registro
+            }
             const distancia = calcularDistancia(
                 position.coords.latitude,
                 position.coords.longitude,
@@ -138,6 +112,15 @@
                 referenciaLng
             );
             return distancia <= radioPermitido;
+        }
+
+        // Función para guardar ubicación de referencia en el servidor
+        async function guardarReferencia(lat, lng) {
+            await fetch('/api/referencia', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lat, lng })
+            });
         }
 
         // Función para registro (entrada o salida)
@@ -153,6 +136,13 @@
                             Debe acercarse a la ubicación permitida para realizar el registro.
                         </div>`;
                     return;
+                }
+
+                // Si no hay referencia guardada, guardar esta como la referencia
+                if (!referenciaLat || !referenciaLng) {
+                    await guardarReferencia(locationData.lat, locationData.lng);
+                    referenciaLat = locationData.lat;
+                    referenciaLng = locationData.lng;
                 }
 
                 // Datos de registro
@@ -185,7 +175,9 @@
         });
 
         // Obtener y mostrar ubicación al cargar la página
-        getLocation().then(showPosition).catch(showError);
+        obtenerReferencia().then(() => {
+            getLocation().then(showPosition).catch(showError);
+        });
     </script>
 </body>
 </html>
