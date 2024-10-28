@@ -6,10 +6,6 @@
     <title>Dashboard</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <style>
-        /* Estilos personalizados */
-        /* ... */
-    </style>
 </head>
 <body>
     <div class="container mt-5">
@@ -30,20 +26,10 @@
     </div>
 
     <script>
-        // Variables de referencia de ubicación (se obtienen desde el servidor)
-        let referenciaLat = null;
-        let referenciaLng = null;
-        const radioPermitido = 500; // Radio en metros
-
-        // Obtener ubicación de referencia del servidor
-        async function obtenerReferencia() {
-            const response = await fetch('/api/referencia');
-            const data = await response.json();
-            if (data.lat && data.lng) {
-                referenciaLat = data.lat;
-                referenciaLng = data.lng;
-            }
-        }
+        // Coordenadas de referencia
+        const referenciaLat = 4.4517778;
+        const referenciaLng = -75.1303828;
+        const radioPermitido = 400; // Radio en metros
 
         // Función para obtener la ubicación actual del usuario
         function getLocation() {
@@ -102,9 +88,6 @@
 
         // Validar distancia y mostrar mensaje si está fuera del rango permitido
         function validarUbicacion(position) {
-            if (!referenciaLat || !referenciaLng) {
-                return true; // Si no hay referencia, permitir el primer registro
-            }
             const distancia = calcularDistancia(
                 position.coords.latitude,
                 position.coords.longitude,
@@ -112,15 +95,6 @@
                 referenciaLng
             );
             return distancia <= radioPermitido;
-        }
-
-        // Función para guardar ubicación de referencia en el servidor
-        async function guardarReferencia(lat, lng) {
-            await fetch('/api/referencia', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ lat, lng })
-            });
         }
 
         // Función para registro (entrada o salida)
@@ -136,13 +110,6 @@
                             Debe acercarse a la ubicación permitida para realizar el registro.
                         </div>`;
                     return;
-                }
-
-                // Si no hay referencia guardada, guardar esta como la referencia
-                if (!referenciaLat || !referenciaLng) {
-                    await guardarReferencia(locationData.lat, locationData.lng);
-                    referenciaLat = locationData.lat;
-                    referenciaLng = locationData.lng;
                 }
 
                 // Datos de registro
@@ -175,9 +142,7 @@
         });
 
         // Obtener y mostrar ubicación al cargar la página
-        obtenerReferencia().then(() => {
-            getLocation().then(showPosition).catch(showError);
-        });
+        getLocation().then(showPosition).catch(showError);
     </script>
 </body>
 </html>
