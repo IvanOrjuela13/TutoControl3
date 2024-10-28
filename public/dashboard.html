@@ -69,7 +69,12 @@
     </div>
 
     <script>
-        // Función para obtener la ubicación del usuario
+        // Coordenadas de referencia (coordenadas del primer registro)
+        const referenciaLat = 4.627; // Reemplazar con latitud real
+        const referenciaLng = -74.066; // Reemplazar con longitud real
+        const radioPermitido = 500; // Radio en metros
+
+        // Función para obtener la ubicación actual del usuario
         function getLocation() {
             return new Promise((resolve, reject) => {
                 if (navigator.geolocation) {
@@ -80,14 +85,19 @@
             });
         }
 
-        // Función para ajustar la fecha y hora
-        function ajustarFechaYHora(fechaOriginal) {
-            let fechaAjustada = new Date(fechaOriginal);
-            fechaAjustada.setDate(fechaAjustada.getDate() + 1); // Sumar un día
-            fechaAjustada.setHours(fechaAjustada.getHours() + 12); // Sumar 12 horas
-            return fechaAjustada.toISOString(); // Convertir a formato ISO 8601
+        // Función para calcular la distancia en metros entre dos puntos geográficos
+        function calcularDistancia(lat1, lng1, lat2, lng2) {
+            const R = 6371000; // Radio de la Tierra en metros
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLng = (lng2 - lng1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            return R * c;
         }
 
+        // Mostrar posición en pantalla
         function showPosition(position) {
             const locationData = {
                 lat: position.coords.latitude,
@@ -96,94 +106,85 @@
 
             document.getElementById('location').innerHTML = `Latitud: ${locationData.lat}, Longitud: ${locationData.lng}`;
             document.getElementById('timestamp').innerHTML = `Fecha y Hora: ${new Date().toLocaleString()}`;
-
             return locationData;
         }
 
+        // Mostrar mensaje de error
         function showError(error) {
+            let mensaje = "";
             switch (error.code) {
                 case error.PERMISSION_DENIED:
-                    document.getElementById('location').innerHTML = "Permiso de geolocalización denegado.";
+                    mensaje = "Permiso de geolocalización denegado.";
                     break;
                 case error.POSITION_UNAVAILABLE:
-                    document.getElementById('location').innerHTML = "Información de ubicación no disponible.";
+                    mensaje = "Información de ubicación no disponible.";
                     break;
                 case error.TIMEOUT:
-                    document.getElementById('location').innerHTML = "La solicitud de geolocalización ha expirado.";
+                    mensaje = "La solicitud de geolocalización ha expirado.";
                     break;
                 case error.UNKNOWN_ERROR:
-                    document.getElementById('location').innerHTML = "Se ha producido un error desconocido.";
+                    mensaje = "Se ha producido un error desconocido.";
                     break;
+            }
+            document.getElementById('location').innerHTML = mensaje;
+        }
+
+        // Validar distancia y mostrar mensaje si está fuera del rango permitido
+        function validarUbicacion(position) {
+            const distancia = calcularDistancia(
+                position.coords.latitude,
+                position.coords.longitude,
+                referenciaLat,
+                referenciaLng
+            );
+            return distancia <= radioPermitido;
+        }
+
+        // Función para registro (entrada o salida)
+        async function registrar(tipo) {
+            try {
+                const position = await getLocation();
+                const locationData = showPosition(position);
+
+                // Verificar si está en el rango permitido
+                if (!validarUbicacion(position)) {
+                    document.getElementById('message').innerHTML = `
+                        <div class="alert alert-warning">
+                            Debe acercarse a la ubicación permitida para realizar el registro.
+                        </div>`;
+                    return;
+                }
+
+                // Datos de registro
+                const userId = 'ID_DEL_USUARIO'; // Reemplazar con ID de usuario real
+                const deviceID = localStorage.getItem('deviceID');
+                const fecha = new Date().toISOString();
+
+                // Enviar registro al servidor
+                const response = await fetch(`/api/registro/${tipo}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ userId, deviceID, ubicacion: locationData, fecha })
+                });
+
+                const data = await response.json();
+                document.getElementById('message').innerHTML = `<div class="alert alert-info">${data.msg}</div>`;
+            } catch (error) {
+                showError(error);
             }
         }
 
-        // Manejador de evento para registro de entrada
-        document.getElementById('entradaBtn').addEventListener('click', async () => {
-            try {
-                const position = await getLocation();
-                const locationData = showPosition(position);
-
-                const userId = 'ID_DEL_USUARIO'; // Reemplaza con el ID del usuario correspondiente
-                const deviceID = localStorage.getItem('deviceID');
-
-                // Generar y ajustar fecha y hora
-                const fechaOriginal = new Date(); // Obtiene la fecha actual
-                const fechaAjustada = ajustarFechaYHora(fechaOriginal); // Ajusta la fecha
-
-                const response = await fetch('/api/registro/entrada', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ userId, deviceID, ubicacion: locationData, fecha: fechaAjustada }),
-                });
-
-                const data = await response.json();
-                document.getElementById('message').innerHTML = `<div class="alert alert-info">${data.msg}</div>`;
-            } catch (error) {
-                showError(error);
-            }
-        });
-
-        // Manejador de evento para registro de salida
-        document.getElementById('salidaBtn').addEventListener('click', async () => {
-            try {
-                const position = await getLocation();
-                const locationData = showPosition(position);
-
-                const userId = 'ID_DEL_USUARIO'; // Reemplaza con el ID del usuario correspondiente
-                const deviceID = localStorage.getItem('deviceID');
-
-                // Generar y ajustar fecha y hora
-                const fechaOriginal = new Date(); // Obtiene la fecha actual
-                const fechaAjustada = ajustarFechaYHora(fechaOriginal); // Ajusta la fecha
-
-                const response = await fetch('/api/registro/salida', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ userId, deviceID, ubicacion: locationData, fecha: fechaAjustada }),
-                });
-
-                const data = await response.json();
-                document.getElementById('message').innerHTML = `<div class="alert alert-info">${data.msg}</div>`;
-            } catch (error) {
-                showError(error);
-            }
-        });
-
-        // Manejador para cerrar sesión
+        // Eventos de botón
+        document.getElementById('entradaBtn').addEventListener('click', () => registrar('entrada'));
+        document.getElementById('salidaBtn').addEventListener('click', () => registrar('salida'));
         document.getElementById('logoutBtn').addEventListener('click', () => {
-            const messageElement = document.getElementById('message');
-            messageElement.innerHTML = '<div class="alert alert-success">Sesión cerrada con éxito.</div>';
-            
-            setTimeout(() => {
-                window.location.href = '/login.html';
-            }, 1000);
+            document.getElementById('message').innerHTML = '<div class="alert alert-success">Sesión cerrada con éxito.</div>';
+            setTimeout(() => window.location.href = '/login.html', 1000);
         });
 
-        // Llamar a la función para obtener la ubicación al cargar la página
+        // Obtener y mostrar ubicación al cargar la página
         getLocation().then(showPosition).catch(showError);
     </script>
 </body>
